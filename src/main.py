@@ -16,13 +16,28 @@ class MediLinkReminderService:
             "sent": False
         })
 
-    def process_reminders(self):
-        print("--- Running Production Reminder Service ---")
+    
+    def process_reminders(self, now=None):
+        print("--- Running Reminder Service (Feature Update) ---")
+
+        if now is None:
+            now = datetime.datetime.now()
+
+        current_minute = now.replace(second=0, microsecond=0)
+
         for appt in self.appointments:
-            if not appt["sent"]:
-                # BUG: Blindly sends reminders without checking cancellation or past times
-                print(f"-> Sending reminder email to {appt['patient']} for appointment at {appt['time']}")
-                appt["sent"] = True
+            intervals = self.calculate_reminder_times(appt["time"])
+
+            for label, r_time in intervals.items():
+                reminder_minute = r_time.replace(second=0, microsecond=0)
+
+                if label in appt["sent_intervals"]:
+                    continue
+
+                if reminder_minute == current_minute:
+                    print(f"-> Sending {label} reminder to {appt['patient']}")
+                    appt["sent_intervals"].append(label)
+
 
 if __name__ == "__main__":
     service = MediLinkReminderService()
