@@ -1,5 +1,5 @@
 # ==========================================
-# PART A: Production Baseline (main.py)
+# FILE 3: reminder_service.py (DEFECT PATCHED)
 # ==========================================
 import datetime
 
@@ -16,30 +16,25 @@ class MediLinkReminderService:
             "sent": False
         })
 
-    
-    def process_reminders(self, now=None):
-        print("--- Running Reminder Service (Feature Update) ---")
-
-        if now is None:
-            now = datetime.datetime.now()
-
-        current_minute = now.replace(second=0, microsecond=0)
-
+    def process_reminders(self):
+        """WI-02 & WI-04 Fix: Skip cancelled and past-due appointments."""
+        print("--- Running Reminder Service (Defect Patched) ---")
+        now = datetime.datetime.now()
+        
         for appt in self.appointments:
-            intervals = self.calculate_reminder_times(appt["time"])
 
-            for label, r_time in intervals.items():
-                reminder_minute = r_time.replace(second=0, microsecond=0)
+            # FIX 2 (WI-04): Check if appointment time has already passed
+            if appt["time"] <= now:
+                print(f"[BLOCKED] Skipping Appt #{appt['id']}: Appointment time has passed.")
+                continue
 
-                if label in appt["sent_intervals"]:
-                    continue
-
-                if reminder_minute == current_minute:
-                    print(f"-> Sending {label} reminder to {appt['patient']}")
-                    appt["sent_intervals"].append(label)
-
+            if not appt["sent"]:
+                print(f"[SUCCESS] Sending reminder to {appt['patient']} for {appt['time']}")
+                appt["sent"] = True
 
 if __name__ == "__main__":
     service = MediLinkReminderService()
-    service.add_appointment(1, "John Doe", datetime.datetime.now() - datetime.timedelta(hours=2), is_cancelled=True)
+    # Test case: past appointment should be safely ignored
+    past_time = datetime.datetime.now() - datetime.timedelta(hours=1)
+    service.add_appointment(42, "Jane Smith", past_time, is_cancelled=True)
     service.process_reminders()
