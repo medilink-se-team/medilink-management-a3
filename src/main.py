@@ -22,6 +22,10 @@ class MediLinkReminderService:
         now = datetime.datetime.now()
         
         for appt in self.appointments:
+            # FIX 1 (WI-02): Check if appointment was cancelled
+            if appt["cancelled"]:
+                print(f"[BLOCKED] Skipping Appt #{appt['id']}: Patient cancelled.")
+                continue
 
             # FIX 2 (WI-04): Check if appointment time has already passed
             if appt["time"] <= now:
@@ -34,7 +38,7 @@ class MediLinkReminderService:
 
 if __name__ == "__main__":
     service = MediLinkReminderService()
-    # Test case: past appointment should be safely ignored
+    # Test case: Cancelled appointment and past appointment should be safely ignored
     past_time = datetime.datetime.now() - datetime.timedelta(hours=1)
     service.add_appointment(42, "Jane Smith", past_time, is_cancelled=True)
     service.process_reminders()
