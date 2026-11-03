@@ -1,5 +1,5 @@
 # ==========================================
-# PART / BRANCH (WI-03): Duplicate Prevention (main.py)
+# PART / BRANCH (WI-05): Reminder Queue Cleanup (main.py)
 # ==========================================
 import datetime
 
@@ -42,6 +42,18 @@ class MediLinkReminderService:
                 # Register token as successfully dispatched
                 self.dispatched_tokens.add(notification_token)
 
+    def cleanup_reminder_queue(self):
+        """WI-05: Remove expired and already-processed entries from the reminder queue."""
+        now = datetime.datetime.now()
+        before = len(self.appointments)
+        self.appointments = [
+            a for a in self.appointments
+            if not (a["sent"] or a["cancelled"] or a["time"] <= now)
+        ]
+        removed = before - len(self.appointments)
+        print(f"[CLEANUP] Removed {removed} processed/expired entries. {len(self.appointments)} pending reminder(s) kept.")
+        return removed
+
 if __name__ == "__main__":
     service = MediLinkReminderService()
     future_time = datetime.datetime.now() + datetime.timedelta(hours=5)
@@ -53,3 +65,8 @@ if __name__ == "__main__":
     
     print("\n--- Second Run (Should block duplicates) ---")
     service.process_reminders()
+
+    # WI-05: add a future appointment that has not been reminded yet, then clean up
+    service.add_appointment(102, "Sam Lee", future_time, is_cancelled=False)
+    print("\n--- Queue Cleanup ---")
+    service.cleanup_reminder_queue()
