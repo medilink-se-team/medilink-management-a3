@@ -1,11 +1,13 @@
 # ==========================================
-# FILE 3: reminder_service.py (DEFECT PATCHED)
+# PART / BRANCH (WI-03): Duplicate Prevention (main.py)
 # ==========================================
 import datetime
 
 class MediLinkReminderService:
     def __init__(self):
         self.appointments = []
+        # WI-03: Track dispatched notification tokens to prevent double-firing
+        self.dispatched_tokens = set()
 
     def add_appointment(self, appt_id, patient_name, appt_time, is_cancelled=False):
         self.appointments.append({
@@ -17,28 +19,37 @@ class MediLinkReminderService:
         })
 
     def process_reminders(self):
-        """WI-02 & WI-04 Fix: Skip cancelled and past-due appointments."""
-        print("--- Running Reminder Service (Defect Patched) ---")
+        """WI-03 Fix: Prevent duplicate reminders when processing runs more than once."""
+        print("--- Running Deduplication-Protected Reminder Service ---")
         now = datetime.datetime.now()
         
         for appt in self.appointments:
-            # FIX 1 (WI-02): Check if appointment was cancelled
-            if appt["cancelled"]:
-                print(f"[BLOCKED] Skipping Appt #{appt['id']}: Patient cancelled.")
+            # Generate a unique tracking token for this appointment's notification
+            notification_token = f"appt_{appt['id']}_reminder"
+
+            # Skip cancelled or past-due appointments
+            if appt["cancelled"] or appt["time"] <= now:
                 continue
 
-            # FIX 2 (WI-04): Check if appointment time has already passed
-            if appt["time"] <= now:
-                print(f"[BLOCKED] Skipping Appt #{appt['id']}: Appointment time has passed.")
+            # WI-03: Concurrency check - verify if token was already processed and dispatched
+            if notification_token in self.dispatched_tokens:
+                print(f"[BLOCKED] Duplicate prevention: Reminder for Appt #{appt['id']} was already dispatched.")
                 continue
 
             if not appt["sent"]:
                 print(f"[SUCCESS] Sending reminder to {appt['patient']} for {appt['time']}")
                 appt["sent"] = True
+                # Register token as successfully dispatched
+                self.dispatched_tokens.add(notification_token)
 
 if __name__ == "__main__":
     service = MediLinkReminderService()
-    # Test case: Cancelled appointment and past appointment should be safely ignored
-    past_time = datetime.datetime.now() - datetime.timedelta(hours=1)
-    service.add_appointment(42, "Jane Smith", past_time, is_cancelled=True)
+    future_time = datetime.datetime.now() + datetime.timedelta(hours=5)
+    service.add_appointment(101, "Alex Mercer", future_time, is_cancelled=False)
+    
+    # Simulate running the process twice concurrently/back-to-back
+    print("--- First Run ---")
+    service.process_reminders()
+    
+    print("\n--- Second Run (Should block duplicates) ---")
     service.process_reminders()
